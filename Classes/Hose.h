@@ -10,6 +10,7 @@ public:
 	virtual void onEnter();
 	void update();
 	void addHose(int num);
+    void clearHoses();
     
 private:
     Vector<Sprite *> hoseList;

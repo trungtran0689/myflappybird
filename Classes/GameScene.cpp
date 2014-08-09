@@ -19,6 +19,7 @@ bool GameScene::init() {
     auto listener = EventListenerTouchOneByOne::create();
     listener->setSwallowTouches(true);
     listener->onTouchBegan = CC_CALLBACK_2(GameScene::onTouchBegan, this);
+    listener->onTouchEnded = CC_CALLBACK_2(GameScene::onTouchEnded, this);
     this->getEventDispatcher()->addEventListenerWithSceneGraphPriority(listener, this);
     
     
@@ -61,14 +62,14 @@ bool GameScene::init() {
     
     Sprite *flappyBird = Sprite::createWithSpriteFrame(spriteCache->getSpriteFrameByName("logo.png"));
 	flappyBird->setPosition(Vec2(winSize.width/2,winSize.height/4*3));
-    flappyBird->setScale(scale);
+    flappyBird->setScale(scale + .5);
 	flappyBird->setTag(TAG_LOGO);
 	this->addChild(flappyBird);
     
     
     Sprite *gameOver=Sprite::createWithSpriteFrame(spriteCache->getSpriteFrameByName("gameover.png"));
 	gameOver->setPosition(Vec2(winSize.width/2,winSize.height/4*3));
-	gameOver->setScale(scale);
+	gameOver->setScale(scale + .5);
 	gameOver->setTag(TAG_OVER);
 	gameOver->setZOrder(10);
 	gameOver->setVisible(false);
@@ -76,46 +77,40 @@ bool GameScene::init() {
     
     
     Sprite *getReady = Sprite::createWithSpriteFrame(spriteCache->getSpriteFrameByName("ready.png"));
-    getReady->setPosition(Vec2(winSize.width/2,winSize.height/4*3-60));
-    getReady->setScale(scale);
+    getReady->setPosition(Vec2(winSize.width/2,winSize.height/4*3));
+    getReady->setScale(scale + .5);
     getReady->setVisible(false);
     getReady->setTag(TAG_READY);
     this->addChild(getReady);
     
     Sprite *start = Sprite::createWithSpriteFrame(spriteCache->getSpriteFrameByName("start.png"));
-    start->setScale(scale);
-    
     MenuItemSprite *startBtn = MenuItemSprite::create(start, start, CC_CALLBACK_1(GameScene::gameStart, this));
-    
-    Menu *menuStart = Menu::create(startBtn, NULL);
-    menuStart->setPosition(Vec2(winSize.width/5, ground1->getBoundingBox().size.height/2 + 60));
-    menuStart->setTag(TAG_START_BTN);
-    menuStart->setZOrder(10);
-    this->addChild(menuStart);
+    startBtn->setPosition(Vec2(winSize.width/4, ground1->getBoundingBox().size.height + 60));
+    startBtn->setScale(scale);
     
     
     Sprite *end = Sprite::createWithSpriteFrame(spriteCache->getSpriteFrameByName("grade.png"));
-    end->setScale(scale);
-    
     MenuItemSprite *endBtn = MenuItemSprite::create(end, end, CC_CALLBACK_1(GameScene::gameEnd, this));
+    endBtn->setScale(scale);
+    endBtn->setPosition(Vec2(winSize.width/4*3, ground1->getBoundingBox().size.height + 60));
     
-    Menu *menuEnd = Menu::create(endBtn, NULL);
-    menuEnd->setPosition(Vec2(winSize.width/5*3, ground1->getBoundingBox().size.height/2 + 60));
-    menuEnd->setTag(TAG_END_BTN);
-    menuEnd->setZOrder(10);
-    this->addChild(menuEnd);
+    auto menu = Menu::create(startBtn, endBtn, NULL);
+    menu->setPosition(Vec2(0, 0));
+    menu->setTag(TAG_MENU);
+    this->addChild(menu);
     
     
     Sprite *hint = Sprite::createWithSpriteFrame(spriteCache->getSpriteFrameByName("hint.png"));
     hint->setPosition(Vec2(winSize.width/2,winSize.height/2));
     hint->setScale(scale);
     hint->setTag(TAG_CLICK);
+    hint->setVisible(false);
     this->addChild(hint);
     
     Label *score=Label::createWithBMFont("fonts/font.fnt", "0");
 	score->setPosition(Vec2(winSize.width/2,winSize.height/4*3+60));
 	score->setTag(TAG_SCORE);
-//	score->setVisible(false);
+	score->setVisible(false);
 	score->setZOrder(10);
 	this->addChild(score);
     
@@ -124,11 +119,11 @@ bool GameScene::init() {
 	record->setPosition(Vec2(winSize.width/2,winSize.height/2+30));
 	record->setScale(scale);
 	record->setTag(TAG_RECORD);
-//	record->setVisible(false);
+	record->setVisible(false);
 	record->setZOrder(10);
 	this->addChild(record);
     
-//    
+ 
     hose = Hose::create();
     this->addChild(hose);
     
@@ -164,6 +159,7 @@ void GameScene::onEnter()
 
 void GameScene::gameStart( Ref *pSender )
 {	
+    CCLOG("PLAY");
     if(gameState == GameOver) {
         hose->removeAllChildren();
         hose->onEnter();
@@ -171,7 +167,12 @@ void GameScene::gameStart( Ref *pSender )
         this->birdReadyAction();
     }
     gameState = Ready;
-    CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("sound/lh_swooshing.ogg");
+    
+    this->getChildByTag(TAG_READY)->setVisible(true);
+    this->getChildByTag(TAG_CLICK)->setVisible(true);
+
+    this->getChildByTag(TAG_LOGO)->setVisible(false);
+    this->getChildByTag(TAG_MENU)->setVisible(false);
 }
 
 void GameScene::birdReadyAction() {
@@ -191,14 +192,49 @@ void GameScene::birdReadyAction() {
     
     birdanimate = Animate::create(birdAnimation);
     
-//    ActionInterval *sequence = Sequence::create(<#cocos2d::FiniteTimeAction *action1, ...#>, NULL)
     
-    Spawn *spawn = Spawn::create(birdanimate, NULL);
+    ActionInterval *action = MoveBy::create(0.3, Vec2(0, -10));
+	ActionInterval *action1 = action->reverse();
+	ActionInterval *sequence =Sequence::create(action,action1,NULL);
+    
+    Spawn *spawn = Spawn::create(birdanimate, sequence, NULL);
     RepeatForever *repeatForever = RepeatForever::create(spawn);
     bird->runAction(repeatForever);
 }
 
-void  GameScene::gameEnd(Ref *pSender)
+void GameScene::birdWelcomeAction() {
+    auto object = this->getChildByTag(TAG_BIRD);
+    Size winSize = Director::getInstance()->getWinSize();
+    Sprite *bird;
+    if(!object){
+        bird = Sprite::createWithSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("bird1.png"));
+        this->addChild(bird);
+    }
+    
+    bird->setPosition(Vec2(winSize.width/2-80, winSize.height/2+20));
+    bird->setZOrder(20);
+    bird->setScale(scale);
+    bird->setTag(TAG_BIRD);
+    
+    
+    Animation *birdAnimation = Animation::create();
+    birdAnimation->setDelayPerUnit(0.2);
+    birdAnimation->addSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("bird1.png"));
+    birdAnimation->addSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("bird2.png"));
+    birdAnimation->addSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("bird3.png"));
+    
+    birdanimate = Animate::create(birdAnimation);
+    auto down = MoveBy::create(0.3, Vec2(0,-10));
+    auto up = MoveBy::create(0.3, Vec2(0,10));
+    
+    ActionInterval *sequence = Sequence::create(down, up, NULL);
+    
+    Spawn *spawn = Spawn::create(birdanimate,sequence, NULL);
+    RepeatForever *repeatForever = RepeatForever::create(spawn);
+    bird->runAction(repeatForever);
+}
+
+void GameScene::gameEnd(Ref *pSender)
 {
 
 	Director::getInstance()->end();
@@ -212,14 +248,50 @@ void GameScene::gameOver(float dt)
 
 void GameScene::update(float dt)
 {
+    this->updateGround();
+    
+    if(gameState == Start) {
+        this->hose->update();
+    }
+}
+
+void GameScene::updateGround() {
     float dif = 4;
-    ground1->setPositionX(ground1->getPositionX()-dif);
-	ground2->setPositionX(ground1->getPositionX()+ground1->getContentSize().width-4);
-	if(ground2->getPositionX()==0)
+    ground1->setPositionX(ground1->getPositionX() - dif);
+	ground2->setPositionX(ground1->getPositionX() + ground1->getContentSize().width);
+	if(ground2->getPositionX() == 0)
 	{
 		ground1->setPositionX(0);
 	}
 }
+
+void GameScene::birdRiseAction()
+{
+	CocosDenshion::SimpleAudioEngine::getInstance()->playEffect("sound/lh_wing.ogg");
+	Size winSize = Director::getInstance()->getWinSize();
+	float riseHeight =45;
+	float birdX =this->getChildByTag(TAG_BIRD)->getPositionX();
+	float birdY= this->getChildByTag(TAG_BIRD)->getPositionY();
+	float time =birdY/600;
+    
+	Repeat *flyAction = Repeat::create(birdanimate,90000);
+	if(birdY+riseHeight>winSize.height)
+	{
+		birdY=winSize.height-riseHeight;
+	}
+    
+	MoveTo *riseAction1 = MoveTo::create(0.2,Vec2(birdX,birdY+riseHeight));
+	RotateTo *riseAction2 =CCRotateTo::create(0,-30);
+	Spawn *riseAction = Spawn::create(riseAction1,riseAction2,NULL);
+    
+	MoveTo *fallAction1 = MoveTo::create(time,Vec2(birdX,60));
+	Sequence *fallAction2= Sequence::create(DelayTime::create(time/6),CCRotateTo::create(0,30),NULL);
+	Spawn *fallAction = Spawn::create(fallAction1,fallAction2,NULL);
+    
+	this->getChildByTag(TAG_BIRD)->stopAllActions();
+	this->getChildByTag(TAG_BIRD)->runAction(Spawn::create(flyAction,Sequence::create(riseAction,CCDelayTime::create(0.05),fallAction,NULL),NULL));
+}
+
 
 bool GameScene::onTouchBegan(Touch* pTouch, Event* pEvent )
 {
@@ -228,6 +300,17 @@ bool GameScene::onTouchBegan(Touch* pTouch, Event* pEvent )
 
 void GameScene::onTouchEnded( Touch* pTouch, Event* pEvent )
 {
-
+    this->getChildByTag(TAG_READY)->setVisible(false);
+	this->getChildByTag(TAG_CLICK)->setVisible(false);
+	if (gameState==Ready)
+	{
+		gameState=Start;
+	}
+	if (gameState==GameOver)
+	{
+		return;
+	}
+    
+	this->birdRiseAction();
 }
 

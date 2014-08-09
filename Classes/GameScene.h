@@ -26,6 +26,10 @@ public:
     void preloadMusic();
     
     void birdReadyAction();
+    void birdWelcomeAction();
+private:
+    void updateGround();
+    void birdRiseAction();
 
 private:
 	Hose* hose;

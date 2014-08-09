@@ -24,35 +24,39 @@ void Hose::update()
 	}
 }
 
+void Hose::clearHoses() {
+    hoseList.clear();
+}
+
 // 添加障碍物
 void Hose::addHose(int num)
 {
 	Size winSize = Director::getInstance()->getWinSize();
 
-	float hoseHeight =830;
-	float accrossHeight = winSize.height/8+150;
+	float hoseHeight = 530;
+	float accrossHeight = winSize.height/8+50;
 	float maxDownY=winSize.height/2;
 	float minDownY =300;
 	float downHeight = CCRANDOM_0_1()*(maxDownY-minDownY)+minDownY;
 
 	int hoseX =winSize.width+200*num;
 
-	Sprite *spriteDown = Sprite::createWithSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("hosedown.png"));
+	Sprite *spriteDown = Sprite::createWithSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("hoseup.png"));
 	// Z轴大的会覆盖Z轴小的
 	spriteDown->setZOrder(1);
 	spriteDown->setAnchorPoint(Vec2(0,0));
 	spriteDown->setPosition(Vec2(hoseX,0));
-	spriteDown->setScaleX(0.5);
-	spriteDown->setScaleY(downHeight/hoseHeight);
+	spriteDown->setScaleX(2.2);
+	spriteDown->setScaleY(2.2* downHeight/hoseHeight);
 	hoseList.pushBack(spriteDown);
 	this->addChild(spriteDown);
 
-	Sprite *spriteUp = Sprite::createWithSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("hoseup.png"));
+	Sprite *spriteUp = Sprite::createWithSpriteFrame(SpriteFrameCache::getInstance()->getSpriteFrameByName("hosedown.png"));
 	spriteUp->setZOrder(1);
 	spriteUp->setAnchorPoint(Vec2(0,0));
 	spriteUp->setPosition(Vec2(hoseX,downHeight+accrossHeight));
-	spriteUp->setScaleX(0.5);
-	spriteUp->setScaleY(0.4);
+	spriteUp->setScaleX(2.2);
+	spriteUp->setScaleY(2.2);
 	hoseList.pushBack(spriteUp);
 	this->addChild(spriteUp);
 }
